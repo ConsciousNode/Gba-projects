@@ -1,0 +1,66 @@
+# GBA-Craft
+
+**GBA-Craft** is a complete, playable, first-person, procedurally generated voxel block-world sandbox for original Nintendo Game Boy Advance hardware (`ARM7TDMI @ 16.78 MHz`), built as a standalone **devkitPro / devkitARM + libtonc** C99 project with zero external binary assets.
+
+Developed for **ConsciousNode SoftWorks** (*"Constraint is the source of invention, not a limitation"*).
+
+---
+
+## Highlights
+
+- **Real 3D Voxel World in EWRAM**: `64 × 64 × 32` blocks (`128 KB` in `EWRAM_BSS`), supporting real underground caves, overhangs, multi-level bridges, and pillars.
+- **Column-Span Voxel Raycaster in IWRAM**: Compiled as 32-bit ARM code in `source/render.iwram.c` and placed in zero-waitstate IWRAM. Renders at `120 × 80` into an IWRAM scratch buffer with front-to-back `[ytop, ybot]` occlusion clipping and hardware 2× affine scaling (`REG_BG2PA = 0x80`, `REG_BG2PD = 0x80`) to fill the `240 × 160` Mode 4 screen.
+- **Pure Per-Column Procedural Generation**: `gen_column(u32 seed, int x, int z, u8 out[32])` uses 2-octave integer value noise for hills (`Y ≈ 8..22`), 3D value noise for underground caves (`Y = 2 .. surface - 4`), and neighbor-aware deterministic tree placement (`1 in 40` grass columns).
+- **Seed + Diff Persistence in 32 KB SRAM**: Regenerates base columns on the stack and writes compact 32-bit diff records (`x:6 | z:6 | y:5 | block:4`) up to `8,176` edits (`32 KB` SRAM with `"SRAM_V113"` signature and FNV-1a checksum), using 8-bit SRAM read/write loops executing from IWRAM.
+- **3D DDA Targeting, Digging, Placing & Crafting**: Exact 4-block reach 3D Amanatides–Woo raycaster (`source/target.iwram.c`), per-material break timers, 9-slot OBJ sprite hotbar (`OBJ` tiles `512..1023`), AABB collision refusal, and `1 WOOD -> 4 PLANKS` crafting (`SELECT + A`).
+- **Built-in 9-Test Acceptance Suite**: Hold `SELECT` while the title screen appears to run 9 automated verification tests (Determinism, Purity, Dig, Place, Placement Refusal, Collision, Save Round-Trip, Save Overflow, and Render Smoke Test with scanline/FPS measurement) without touching player SRAM.
+
+---
+
+## Building the ROM
+
+### Prerequisites
+
+- [devkitPro](https://devkitpro.org/) with `devkitARM`, `libtonc`, and `gba-tools` (`gbafix`) installed.
+- `DEVKITPRO` and `DEVKITARM` environment variables set:
+  ```sh
+  export DEVKITPRO=/opt/devkitpro
+  export DEVKITARM=/opt/devkitpro/devkitARM
+  ```
+
+### Compile
+
+```sh
+cd gba-craft
+make
+```
+
+This produces `gba-craft.gba` (and `gba-craft.elf` / `gba-craft.map`). No `grit` or external asset conversion tools are invoked; all font glyphs, HUD icons, palettes, and lookup tables are defined in C.
+
+### Clean
+
+```sh
+make clean
+```
+
+---
+
+## Running & Self-Test Mode
+
+- Open `gba-craft.gba` in **mGBA** or load onto a GBA flashcart configured for **SRAM (32 KB / 256 Kb)**.
+- **Normal Play**: Press `A` or `START` on the title screen to enter a New World (with an editable 8-hex-digit seed) or `Continue` from an existing SRAM save.
+- **Self-Test Mode**: Hold `SELECT` while the title screen appears to execute all 9 acceptance tests on hardware/emulator and view `PASS`/`FAIL` status plus render scanline timing.
+
+---
+
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Column-span raycaster architecture, ASCII diagram, memory budget across all GBA RAM regions, `16.16` fixed-point specification, and per-frame timeline.
+- [`docs/CONTROLS.md`](docs/CONTROLS.md) — Complete player controls, crafting recipe, and menu navigation.
+- [`docs/FEATURES.md`](docs/FEATURES.md) — Feature truth table mapping every requirement to its source file, function, and verification status.
+
+---
+
+## License
+
+MIT License — `Copyright (c) 2026 Khamerron Kizer / ConsciousNode SoftWorks`.
